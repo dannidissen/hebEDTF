@@ -1,6 +1,11 @@
 """Core conversion functions for hebEDTF."""
 
+from datetime import timedelta
+
 from pyluach import dates
+
+from hebedtf.months import get_hebrew_month_number
+from hebedtf.parser import parse_hebrew_date_text
 
 
 def hebrew_to_edtf(text: str) -> str:
@@ -12,16 +17,25 @@ def hebrew_to_edtf(text: str) -> str:
     Returns:
         EDTF formatted string (e.g. "2023-09-16", "2023-09-16/2024-10-02")
     """
-    if not text or not text.strip():
-        raise ValueError("Input Hebrew date string cannot be empty")
+    components = parse_hebrew_date_text(text)
 
-    cleaned_text = text.strip()
+    if components.day is not None and components.month_str is not None:
+        month_num = get_hebrew_month_number(components.month_str, components.year)
+        heb_d = dates.HebrewDate(components.year, month_num, components.day)
+        greg_date = heb_d.to_greg().to_pydate()
+        return greg_date.isoformat()
 
-    # Initial skeleton logic for simple test validation
-    if "תשפ\"ד" in cleaned_text or "תשפד" in cleaned_text:
-        # Hebrew Year 5784: 2023-09-16 to 2024-10-02
-        start = dates.HebrewDate(5784, 7, 1).to_greg().to_pydate()
-        end = dates.HebrewDate(5785, 7, 1).to_greg().to_pydate()
-        return f"{start.isoformat()}/{end.isoformat()}"
+    elif components.month_str is not None:
+        month_num = get_hebrew_month_number(components.month_str, components.year)
+        start_d = dates.HebrewDate(components.year, month_num, 1).to_greg().to_pydate()
+        month_len = dates.utils._month_length(components.year, month_num)
+        end_d = dates.HebrewDate(
+            components.year, month_num, month_len
+        ).to_greg().to_pydate()
+        return f"{start_d.isoformat()}/{end_d.isoformat()}"
 
-    raise NotImplementedError(f"Conversion for '{text}' is not yet implemented")
+    else:
+        start_d = dates.HebrewDate(components.year, 7, 1).to_greg().to_pydate()
+        next_tishrei = dates.HebrewDate(components.year + 1, 7, 1).to_greg().to_pydate()
+        end_d = next_tishrei - timedelta(days=1)
+        return f"{start_d.isoformat()}/{end_d.isoformat()}"
