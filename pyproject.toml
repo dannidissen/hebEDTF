@@ -28,6 +28,9 @@ dependencies = [
     "pyluach>=2.2.0",
 ]
 
+[project.scripts]
+hebedtf = "hebedtf.cli:main"
+
 [project.optional-dependencies]
 dev = [
     "edtf>=4.0.0",
